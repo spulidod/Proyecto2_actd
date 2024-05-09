@@ -1,19 +1,13 @@
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
-import plotly.express as px
-import psycopg2
-from dotenv import load_dotenv
-import os
 import pandas as pd
+import plotly.express as px
 import keras
 import numpy as np
+import psycopg2
 
-# Inicializar la aplicación Dash
-app = dash.Dash(__name__)
-model = keras.models.load_model('modelo_proy2.keras')
 
-# Establecer la conexión a la base de datos
 conn = psycopg2.connect(
         dbname="dataexploracionfinal",
         user="postgres",
@@ -22,8 +16,8 @@ conn = psycopg2.connect(
         port='5432'
     )
 
-# Obtener los datos de la base de datos
 def get_data(query):
+    #conn = connect_to_db()
     cur = conn.cursor()
     cur.execute(query)
     data = cur.fetchall()
@@ -35,118 +29,123 @@ def get_data(query):
 query_data = "SELECT * FROM tablename"
 
 # Obtener los datos
-data_db = pd.DataFrame(get_data(query_data), columns=['id', 'x1limitbal', 'x2sex', 'x3education', 'x4marriage', 'x5age', 'x6pay0', 'x7pay2', 'x8pay3', 'x9pay4', 'x10pay5', 'x11pay6', 'x12billamt1', 'x13billamt2', 'x14billamt3', 'x15billamt4', 'x16billamt5', 'x17billamt6', 'x18payamt1', 'x19payamt2', 'x20payamt3', 'x21payamt4', 'x22payamt5', 'x23payamt6', 'ydefaultpaymentnextmonth', 'ratiouso12', 'ratiouso13', 'ratiouso14', 'ratiouso15', 'ratiouso16', 'ratiouso17'])
+data = pd.DataFrame(get_data(query_data), columns=['id', 'x1limitbal', 'x2sex', 'x3education', 'x4marriage', 'x5age', 'x6pay0', 'x7pay2', 'x8pay3', 'x9pay4', 'x10pay5', 'x11pay6', 'x12billamt1', 'x13billamt2', 'x14billamt3', 'x15billamt4', 'x16billamt5', 'x17billamt6', 'x18payamt1', 'x19payamt2', 'x20payamt3', 'x21payamt4', 'x22payamt5', 'x23payamt6', 'ydefaultpaymentnextmonth', 'ratiouso12', 'ratiouso13', 'ratiouso14', 'ratiouso15', 'ratiouso16', 'ratiouso17'])
 
 # Definir el estilo externo
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-
+# Cargar el modelo serializado
+model = keras.models.load_model('modelo_proy2.keras')
 # Obtener lista de columnas para el dropdown
-column_options = [{'label': col, 'value': col} for col in data_db.columns if col not in ["ydefaultpaymentnextmonth", "id"]]
+column_options = [{'label': col, 'value': col} for col in data.columns if col not in ["ydefaultpaymentnextmonth", "id"]]
 
 # Obtener las posibles variables de entrada y sus valores únicos
 input_variables = ['x2sex', 'x3education', 'x4marriage', 'x5age']
-input_values = {var: data_db[var].unique() for var in input_variables}
+input_values = {var: data[var].unique() for var in input_variables}
 meses = ['Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre']
 
+# Inicializar la aplicación Dash
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+
 # Diseñar el layout de la aplicación
-app.layout = html.Div([
-    html.H5('Descripción de las variables:'),
-    html.H6("X2 SEX: Género del cliente, X3 EDUCATION: Nivel educativo, X4 MARRIAGE: Estado civil, X5 AGE: Edad del cliente en años"),
-    html.H6("PAY_X:  Estado de pago en el mes X, BILL_AMT_X: Cantidad en el estado de cuenta del mes X, RatioUsoX: Uso tarjeta/Límite de crédito en el mes X"),
-    html.H6("Mes (X). 1: septiembre, 2: agosto, 3: julio, 4: junio, 5: mayo, 6: abril"),
-    html.H3("Explorador de Datos"),
-    html.Div([
-        html.Label("Selecciona una característica para visualizar su distribución:"),
-        dcc.Dropdown(
-            id='feature-dropdown-explorer',
-            options=column_options,
-            value='x5age'  # Característica predeterminada
-        ),
-    ]),
-    dcc.Graph(id='feature-histogram'),
+app.layout = html.Div(
+    [
+        html.H5('Descripcion de las variables:'),
+        html.H6("X2 SEX: Género del cliente, X3 EDUCATION: Nivel educativo, X4 MARRIAGE: Estado civil, X5 AGE: Edad del cliente en años"),
+        html.H6("PAY_X:  Estado de pago en el mes X, BILL_AMT_X: Cantidad en el estado de cuenta del mes X, RatioUsoX: Uso tarjeta/Límite de crédito en el mes X"),
+        html.H6("Mes (X). 1: septiembre, 2: agosto, 3: julio, 4: junio, 5: mayo, 6: abril"),
+        html.H3("Explorador de Datos"),
+        html.Div([
+            html.Label("Selecciona una característica para visualizar su distribución:"),
+            dcc.Dropdown(
+                id='feature-dropdown-explorer',
+                options=column_options,
+                value='x5age'  # Característica predeterminada
+            ),
+        ]),
+        dcc.Graph(id='feature-histogram'),
 
-    html.Hr(),  # Línea divisoria
+        html.Hr(),  # Línea divisoria
 
-    html.H3("Análisis de Riesgo de Crédito"),
-    html.Div([
-        html.Label("Selecciona la característica para visualizar:"),
-        dcc.Dropdown(
-            id='feature-dropdown-risk',
-            options=column_options,
-            value='x5age'  # Característica predeterminada
-        ),
-    ]),
-    dcc.Graph(id='feature-visualization-risk'),
+        html.H3("Análisis de Riesgo de Crédito"),
+        html.Div([
+            html.Label("Selecciona la característica para visualizar:"),
+            dcc.Dropdown(
+                id='feature-dropdown-risk',
+                options=column_options,
+                value='x5age'  # Característica predeterminada
+            ),
+        ]),
+        dcc.Graph(id='feature-visualization-risk'),
 
-    html.Hr(),  # Línea divisoria
+        html.Hr(),  # Línea divisoria
 
-    html.H3("Evolución Promedio de la Deuda por Variable de Entrada"),
-    html.Div([
-        html.Label("Selecciona la variable de entrada:"),
-        dcc.Dropdown(
-            id='variable-dropdown',
-            options=[{'label': var, 'value': var} for var in input_variables],
-            value=input_variables[0]  # Valor predeterminado
-        ),
-    ]),
-    html.Div([
-        html.Label("Selecciona un valor:"),
-        dcc.Dropdown(id='value-dropdown')  # Se define aquí, pero se llenará mediante callback
-    ]),
-    dcc.Graph(id='debt-evolution-graph'),
+        html.H3("Evolución Promedio de la Deuda por Variable de Entrada"),
+        html.Div([
+            html.Label("Selecciona la variable de entrada:"),
+            dcc.Dropdown(
+                id='variable-dropdown',
+                options=[{'label': var, 'value': var} for var in input_variables],
+                value=input_variables[0]  # Valor predeterminado
+            ),
+        ]),
+        html.Div([
+            html.Label("Selecciona un valor:"),
+            dcc.Dropdown(id='value-dropdown')  # Se define aquí, pero se llenará mediante callback
+        ]),
+        dcc.Graph(id='debt-evolution-graph'),
 
-    html.Hr(),  # Línea divisoria
+        html.Hr(),  # Línea divisoria
 
-    html.H3("Predicción de Incumplimiento de Pago"),
-    html.Div([
-        html.Label("Género:"),
-        dcc.Input(id='gender', type='number', value=1),
-        html.P("1 para masculino y 2 para femenino", style={'display': 'inline-block', 'margin-left': '10px'})]),
-    html.Div([
-        html.Label("Nivel educativo: "),
-        dcc.Input(id='education', type='number', value=1),
-        html.P("1 = Posgrado; 2 = Universidad; 3 = Secundaria; 4 = otros", style={'display': 'inline-block', 'margin-left': '10px'})]),
-    html.H6("Estado de pago: 0 = Pago puntual; 1 = Retraso de pago por un mes; 2 = Retraso de pago por dos meses; . . .; 8 = Retraso de pago por ocho meses; 9 = Retraso de pago por nueve meses o más."),
-    html.Div(["Estado de pago en septiembre de 2005 (X6): ",
-            dcc.Input(id='pay-6', type='number', value=0)]),
-    html.Br(),
-    html.Div(["Estado de pago en agosto de 2005 (X7): ",
-            dcc.Input(id='pay-7', type='number', value=0)]),
-    html.Br(),
-    html.Div(["Estado de pago en julio de 2005 (X8): ",
-            dcc.Input(id='pay-8', type='number', value=0)]),
-    html.Br(),
-    html.Div(["Estado de pago en junio de 2005 (X9): ",
-            dcc.Input(id='pay-9', type='number', value=0)]),
-    html.Br(),
-    html.Div(["Estado de pago en mayo de 2005 (X10): ",
-            dcc.Input(id='pay-10', type='number', value=0)]),
-    html.Br(),
-    html.Div(["Estado de pago en abril de 2005 (X11): ",
-            dcc.Input(id='pay-11', type='number', value=0)]),
-    html.Br(),
-    html.H6("Ratio de uso: Uso tarjeta/Límite de crédito"),
-    html.Div(["Ratio de uso en septiembre de 2005 (RatioUso_12): ",
-            dcc.Input(id='ratio-12', type='number', value=0)]),
-    html.Br(),
-    html.Div(["Ratio de uso en agosto de 2005 (RatioUso_13): ",
-            dcc.Input(id='ratio-13', type='number', value=0)]),
-    html.Br(),
-    html.Div(["Ratio de uso en julio de 2005 (RatioUso_14): ",
-            dcc.Input(id='ratio-14', type='number', value=0)]),
-    html.Br(),
-    html.Div(["Ratio de uso en junio de 2005 (RatioUso_15): ",
-            dcc.Input(id='ratio-15', type='number', value=0)]),
-    html.Br(),
-    html.Div(["Ratio de uso en mayo de 2005 (RatioUso_16): ",
-            dcc.Input(id='ratio-16', type='number', value=0)]),
-    html.Br(),
-    html.Div(["Ratio de uso en abril de 2005 (RatioUso_17): ",
-            dcc.Input(id='ratio-17', type='number', value=0)]),
-    html.Br(),
-    html.Div(id='prediction-output')
-
-])
+        html.H4("Ingrese las características para la predicción"),
+        html.Div([
+            html.Label("Género:"),
+            dcc.Input(id='gender', type='number', value=1),
+            html.P("1 para masculino y 2 para femenino", style={'display': 'inline-block', 'margin-left': '10px'})]),
+        html.Div([
+            html.Label("Nivel educativo: "),
+            dcc.Input(id='education', type='number', value=1),
+            html.P("1 = Posgrado; 2 = Universidad; 3 = Secundaria; 4 = otros", style={'display': 'inline-block', 'margin-left': '10px'})]),
+        html.H6("Estado de pago: 0 = Pago puntual; 1 = Retraso de pago por un mes; 2 = Retraso de pago por dos meses; . . .; 8 = Retraso de pago por ocho meses; 9 = Retraso de pago por nueve meses o más."),
+        html.Div(["Estado de pago en septiembre de 2005 (X6): ",
+                  dcc.Input(id='pay-6', type='number', value=0)]),
+        html.Br(),
+        html.Div(["Estado de pago en agosto de 2005 (X7): ",
+                  dcc.Input(id='pay-7', type='number', value=0)]),
+        html.Br(),
+        html.Div(["Estado de pago en julio de 2005 (X8): ",
+                  dcc.Input(id='pay-8', type='number', value=0)]),
+        html.Br(),
+        html.Div(["Estado de pago en junio de 2005 (X9): ",
+                  dcc.Input(id='pay-9', type='number', value=0)]),
+        html.Br(),
+        html.Div(["Estado de pago en mayo de 2005 (X10): ",
+                  dcc.Input(id='pay-10', type='number', value=0)]),
+        html.Br(),
+        html.Div(["Estado de pago en abril de 2005 (X11): ",
+                  dcc.Input(id='pay-11', type='number', value=0)]),
+        html.Br(),
+        html.H6("Ratio de uso: Uso tarjeta/Límite de crédito"),
+        html.Div(["Ratio de uso en septiembre de 2005 (RatioUso_12): ",
+                  dcc.Input(id='ratio-12', type='number', value=0)]),
+        html.Br(),
+        html.Div(["Ratio de uso en agosto de 2005 (RatioUso_13): ",
+                  dcc.Input(id='ratio-13', type='number', value=0)]),
+        html.Br(),
+        html.Div(["Ratio de uso en julio de 2005 (RatioUso_14): ",
+                  dcc.Input(id='ratio-14', type='number', value=0)]),
+        html.Br(),
+        html.Div(["Ratio de uso en junio de 2005 (RatioUso_15): ",
+                  dcc.Input(id='ratio-15', type='number', value=0)]),
+        html.Br(),
+        html.Div(["Ratio de uso en mayo de 2005 (RatioUso_16): ",
+                  dcc.Input(id='ratio-16', type='number', value=0)]),
+        html.Br(),
+        html.Div(["Ratio de uso en abril de 2005 (RatioUso_17): ",
+                  dcc.Input(id='ratio-17', type='number', value=0)]),
+        html.Br(),
+        html.Div(id='prediction-output')
+    ]
+)
 
 # Callback para actualizar el histograma del explorador de datos según la característica seleccionada
 @app.callback(
@@ -155,9 +154,16 @@ app.layout = html.Div([
 )
 def update_histogram(selected_feature):
     # Filtrar los datos por la característica seleccionada
-    filtered_data = data_db[selected_feature]
-    # Crear histograma
-    fig = px.histogram(filtered_data, x=selected_feature, title=f'Distribución de {selected_feature}')
+    filtered_data = data[selected_feature]
+    
+    # Limitar el histograma solo a los valores de nivel educativo 1, 2, 3 y 4
+    if selected_feature == 'x3education':
+        filtered_data = data[data[selected_feature].isin([1, 2, 3, 4])]
+    elif selected_feature == 'x4marriage':
+        filtered_data = data[data[selected_feature].isin([1, 2, 3])]
+    
+    # Crear histograma con color verde
+    fig = px.histogram(filtered_data, x=selected_feature, title=f'Distribución de {selected_feature}', color_discrete_sequence=['#8FBC8F'])
     return fig
 
 # Callback para actualizar la visualización de análisis de riesgo según la característica seleccionada
@@ -166,18 +172,25 @@ def update_histogram(selected_feature):
     [Input('feature-dropdown-risk', 'value')]
 )
 def update_visualization_risk(selected_feature):
+    if selected_feature == 'x3education':
+        filtered_data = data[data[selected_feature].isin([1, 2, 3, 4])]
+    elif selected_feature == 'x4marriage':
+        filtered_data = data[data[selected_feature].isin([1, 2, 3])]
+    else:
+        filtered_data = data
+    
     # Crear la visualización según la característica seleccionada
-    fig = px.histogram(data_db, x=selected_feature, color='ydefaultpaymentnextmonth', barmode='group', histnorm='percent')
-    
-    # Cambiar los colores de las barras
-    fig.update_traces(marker=dict(color=['blue', 'red']), selector=dict(type='bar'), overwrite=True)
-    
+    fig = px.histogram(filtered_data, x=selected_feature, color='ydefaultpaymentnextmonth', barmode='group', histnorm='percent',
+                       color_discrete_map={'1': '#B22222', '0': '#1E90FF'})
     fig.update_layout(title=f'Distribución de {selected_feature}',
                       xaxis_title=selected_feature,
                       yaxis_title='Porcentaje del Total',
                       legend_title='Default Payment',
                       bargap=0.2)
     return fig
+
+
+
 
 # Callback para actualizar el menú desplegable de valores según la variable seleccionada
 @app.callback(
@@ -187,6 +200,8 @@ def update_visualization_risk(selected_feature):
 def update_value_dropdown_options(selected_variable):
     if selected_variable == 'x3education':
         values = [1, 2, 3, 4]
+    elif selected_variable == 'x4marriage':
+        values = [1, 2, 3]
     else:
         values = input_values.get(selected_variable, [])
     return [{'label': str(val), 'value': val} for val in values]
@@ -209,7 +224,8 @@ def update_graph(variable, value):
         return {}
     
     # Filtrar los datos por la variable y el valor seleccionados
-    filtered_data = data_db[data_db[variable] == value]
+    filtered_data = data[data[variable] == value]
+    
     # Seleccionar las columnas correspondientes a la deuda
     debt_columns = ['x12billamt1', 'x13billamt2', 'x14billamt3',
                     'x15billamt4', 'x16billamt5', 'x17billamt6']
@@ -223,6 +239,7 @@ def update_graph(variable, value):
     # Calcular la deuda media para aquellos que no terminaron en default (Y=0)
     no_default_data = filtered_data[filtered_data['ydefaultpaymentnextmonth'] == '0']
     no_default_mean_debt_by_period = no_default_data[debt_columns].mean()
+    
     # Crear el gráfico de líneas
     fig = px.line(x=meses, y=default_mean_debt_by_period.values,
                   labels={'x': 'Período', 'y': 'Deuda Promedio'},
@@ -230,9 +247,9 @@ def update_graph(variable, value):
     
     # Agregar las líneas con leyendas
     fig.add_scatter(x=meses, y=default_mean_debt_by_period.values,
-                    mode='lines', name='Con Default')
+                    mode='lines', name='Con Default', line_color='#B22222')
     fig.add_scatter(x=meses, y=no_default_mean_debt_by_period.values,
-                    mode='lines', name='Sin Default')
+                    mode='lines', name='Sin Default', line_color='#1E90FF')
     
     return fig
 
@@ -280,6 +297,8 @@ def update_output(gender, education, pay_6, pay_7, pay_8, pay_9, pay_10, pay_11,
         html.P('{:.3f}'.format(prediction[0][0]), style={'font-size': '20px'})
     ])
 
+
 # Ejecutar la aplicación
 if __name__ == '__main__':
     app.run_server(debug=True)
+
